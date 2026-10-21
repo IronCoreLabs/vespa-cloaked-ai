@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<services version="1.0">
+
+    <container id="default" version="1.0">
+
+        <component id="com.ironcorelabs.vespa.cloakedai.CloakedAi" bundle="cloaked-ai-vespa-plugin">
+            <config name="com.ironcorelabs.vespa.cloakedai.cloaked-ai">
+                <secretFile>/run/secrets/cloaked-ai-secret</secretFile>
+                <secretId>1</secretId>
+                <approximationFactor>1.0</approximationFactor>
+                <tenantId>demo-tenant</tenantId>
+                <vectorField>embedding</vectorField>
+                <metadataField>embedding_metadata</metadataField>
+                <queryInput>q</queryInput>
+            </config>
+        </component>
+
+        <search>
+            <chain id="default" inherits="vespa">
+                <searcher id="com.ironcorelabs.vespa.cloakedai.EncryptQueryVectorSearcher" bundle="cloaked-ai-vespa-plugin"/>
+            </chain>
+        </search>
+
+        <document-processing>
+            <chain id="cloaked-ai" inherits="indexing">
+                <documentprocessor id="com.ironcorelabs.vespa.cloakedai.EncryptVectorsDocumentProcessor" bundle="cloaked-ai-vespa-plugin"/>
+            </chain>
+        </document-processing>
+
+        <document-api/>
+
+    </container>
+
+    <content id="docs" version="1.0">
+        <min-redundancy>1</min-redundancy>
+        <documents>
+            <document type="doc" mode="index"/>
+            <document-processing chain="cloaked-ai"/>
+        </documents>
+    </content>
+
+</services>

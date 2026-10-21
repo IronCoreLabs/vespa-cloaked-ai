@@ -1,0 +1,6 @@
+{"put": "id:demo:doc::apple", "fields": {"text": "apple", "embedding": {"values": [0.9, 0.8, 0.1, 0.0, 0.1, 0.0, 0.0, 0.1]}}}
+{"put": "id:demo:doc::banana", "fields": {"text": "banana", "embedding": {"values": [0.8, 0.9, 0.0, 0.1, 0.0, 0.1, 0.1, 0.0]}}}
+{"put": "id:demo:doc::truck", "fields": {"text": "truck", "embedding": {"values": [0.0, 0.1, 0.9, 0.8, 0.0, 0.1, 0.0, 0.0]}}}
+{"put": "id:demo:doc::bicycle", "fields": {"text": "bicycle", "embedding": {"values": [0.1, 0.0, 0.8, 0.9, 0.1, 0.0, 0.1, 0.0]}}}
+{"put": "id:demo:doc::guitar", "fields": {"text": "guitar", "embedding": {"values": [0.0, 0.0, 0.1, 0.0, 0.9, 0.8, 0.0, 0.1]}}}
+{"put": "id:demo:doc::piano", "fields": {"text": "piano", "embedding": {"values": [0.1, 0.0, 0.0, 0.1, 0.8, 0.9, 0.1, 0.0]}}}

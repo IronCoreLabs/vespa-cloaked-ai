@@ -1,0 +1,33 @@
+schema doc {
+
+    document doc {
+
+        field text type string {
+            indexing: summary | index
+        }
+
+        # Plaintext on the feed, stored encrypted by EncryptVectorsDocumentProcessor.
+        field embedding type tensor<float>(x[8]) {
+            indexing: summary | attribute | index
+            attribute {
+                distance-metric: euclidean
+            }
+        }
+
+        field embedding_metadata type raw {
+            indexing: summary
+        }
+
+    }
+
+    rank-profile closest {
+        inputs {
+            query(q) tensor<float>(x[8])
+        }
+        first-phase {
+            expression: closeness(field, embedding)
+        }
+        match-features: distance(field, embedding)
+    }
+
+}

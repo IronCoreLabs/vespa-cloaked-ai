@@ -1,0 +1,22 @@
+package=com.ironcorelabs.vespa.cloakedai
+
+## Path, on the container node, to a file holding the base64 encoded Cloaked AI secret.
+secretFile string
+
+## Id recorded in each encrypted vector's header; selects the secret on decrypt.
+secretId int default=1
+
+## Higher is more secure but adds more noise to encrypted vectors. See the ironcore-alloy VectorSecret docs.
+approximationFactor double
+
+## Tenant the vector key is derived for.
+tenantId string
+
+## Dense tensor<float>(x[N]) field encrypted by EncryptVectorsDocumentProcessor.
+vectorField string
+
+## Raw field receiving the paired ICL metadata needed to decrypt vectorField.
+metadataField string
+
+## Query input encrypted by EncryptQueryVectorSearcher, e.g. "q" for input.query(q).
+queryInput string

@@ -1,0 +1,1 @@
+{"update": "id:demo:doc::apple", "fields": {"embedding": {"assign": {"values": [1, 1, 1, 1, 1, 1, 1, 1]}}}}
