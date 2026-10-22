@@ -96,3 +96,145 @@ The vector field must be a `tensor<float>(x[N])`, and the schema needs a `raw` f
 The secret is read from a file holding at least 32 bytes, base64 encoded. The demo generates one and mounts it at `/run/secrets/cloaked-ai-secret`; in production, provision it the way you provision other secrets on Vespa nodes. Every container node that feeds or queries needs the same secret, tenant id and approximation factor.
 
 The plugin copies `libironcore_alloy.so` from the alloy jar to a temporary file at startup and loads it from there. It supports Linux on x86-64 and aarch64.
+
+## Example runthrough of Vespa commands
+
+```console
+# put the embedding in
+bash-5.3$ vespa document put id:demo:doc::violin --data '{"fields": {"text": "violin", "embedding": {"values": [0.0, 0.1, 0.0, 0.0, 0.85, 0.85, 0.0, 0.1]}}}'
+Success: put id:demo:doc::violin
+
+# query it back out, see that it's encrypted
+bash-5.3$ vespa document get id:demo:doc::violin
+{
+    "pathId": "/document/v1/demo/doc/docid/violin",
+    "id": "id:demo:doc::violin",
+    "fields": {
+        "text": "violin",
+        "embedding": {
+            "type": "tensor<float>(x[8])",
+            "values": [
+                0.11757437884807587,
+                -0.03741198033094406,
+                -0.017604544758796692,
+                0.03553548455238342,
+                0.8509227633476257,
+                -0.11918745189905167,
+                0.038667697459459305,
+                0.7788750529289246
+            ]
+        },
+        "embedding_metadata": "AAAAAYEACgxHrI5T10wB7x50nM4SIF6bGE7qpvcOxwlqzvD0nTeOU4zqNvO48t1Qd8ilFELC"
+    }
+}
+
+# query the instrument category w/ an embedding, bypassing the Alloy plugin. Does not include the violin
+bash-5.3$ vespa query 'yql=select text from doc where {targetHits: 3}nearestNeighbor(embedding, q)' 'input.query(q)=[0.05, 0.05, 0.05, 0.05, 0.85, 0.85, 0.05, 0.05]' ranking=closest hits=3 searchChain=vespa
+{
+    "root": {
+        "children": [
+            {
+                "fields": {
+                    "matchfeatures": {
+                        "distance(field,embedding)": 1.0346295438277027
+                    },
+                    "text": "truck"
+                },
+                "id": "index:docs/0/a9cb430bc907b31d690221d3",
+                "relevance": 0.49148996338602385,
+                "source": "docs"
+            },
+            {
+                "fields": {
+                    "matchfeatures": {
+                        "distance(field,embedding)": 1.125380981361623
+                    },
+                    "text": "piano"
+                },
+                "id": "index:docs/0/d113f1c3cd45be8b804bd7c6",
+                "relevance": 0.4705038808427424,
+                "source": "docs"
+            },
+            {
+                "fields": {
+                    "matchfeatures": {
+                        "distance(field,embedding)": 1.1644318269959255
+                    },
+                    "text": "guitar"
+                },
+                "id": "index:docs/0/4c39e90df9e1b66077b375df",
+                "relevance": 0.4620150136065628,
+                "source": "docs"
+            }
+        ],
+        "coverage": {
+            "coverage": 100,
+            "documents": 7,
+            "full": true,
+            "nodes": 1,
+            "results": 1,
+            "resultsFull": 1
+        },
+        "fields": {
+            "totalCount": 3
+        },
+        "id": "toplevel",
+        "relevance": 1
+    }
+}
+
+# query using the plugin, violin now displaces "truck" as one of the closest matches.
+bash-5.3$ vespa query 'yql=select text from doc where {targetHits: 3}nearestNeighbor(embedding, q)' 'input.query(q)=[0.05, 0.05, 0.05, 0.05, 0.85, 0.85, 0.05, 0.05]' ranking=closest hits=3
+{
+    "root": {
+        "children": [
+            {
+                "fields": {
+                    "matchfeatures": {
+                        "distance(field,embedding)": 0.23572567531906885
+                    },
+                    "text": "guitar"
+                },
+                "id": "index:docs/0/4c39e90df9e1b66077b375df",
+                "relevance": 0.8092410961209464,
+                "source": "docs"
+            },
+            {
+                "fields": {
+                    "matchfeatures": {
+                        "distance(field,embedding)": 0.3595242604981712
+                    },
+                    "text": "violin"
+                },
+                "id": "index:docs/0/baed9eeee2ab9db4b84bafeb",
+                "relevance": 0.7355514197544143,
+                "source": "docs"
+            },
+            {
+                "fields": {
+                    "matchfeatures": {
+                        "distance(field,embedding)": 0.42668048149271787
+                    },
+                    "text": "piano"
+                },
+                "id": "index:docs/0/d113f1c3cd45be8b804bd7c6",
+                "relevance": 0.7009277921526708,
+                "source": "docs"
+            }
+        ],
+        "coverage": {
+            "coverage": 100,
+            "documents": 7,
+            "full": true,
+            "nodes": 1,
+            "results": 1,
+            "resultsFull": 1
+        },
+        "fields": {
+            "totalCount": 3
+        },
+        "id": "toplevel",
+        "relevance": 1
+    }
+}
+```
