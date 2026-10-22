@@ -21,7 +21,12 @@ This repo builds an image from the same published Vespa RPMs, using the AlmaLinu
 
 ## Requirements
 
-Docker and Bazel 8 (`.bazelversion` pins it for bazelisk; `nix develop` provides it, along with the Vespa CLI).
+- Docker
+
+for this demo specifically:
+
+- Bazel 8 (`.bazelversion` pins it for bazelisk; `nix develop` provides it)
+- Vespa CLI (also provided by `nix develop` if you have it)
 
 ## Running
 
@@ -55,13 +60,15 @@ vespa status
 # Feed a document with a plaintext vector; it is stored encrypted.
 vespa document put id:demo:doc::violin \
   --data '{"fields": {"text": "violin", "embedding": {"values": [0.0, 0.1, 0.0, 0.0, 0.85, 0.85, 0.0, 0.1]}}}'
+# See that the stored encrypted values are different than what was input
 vespa document get id:demo:doc::violin
 
 # Nearest neighbors of a plaintext query vector near the music topic.
 vespa query 'yql=select text from doc where {targetHits: 3}nearestNeighbor(embedding, q)' \
   'input.query(q)=[0.05, 0.05, 0.05, 0.05, 0.85, 0.85, 0.05, 0.05]' ranking=closest hits=3
 
-# The same query without EncryptQueryVectorSearcher, matching a plaintext vector against encrypted ones.
+# The same query without EncryptQueryVectorSearcher, matching a plaintext vector against encrypted ones,
+# violin's distance is too high to match.
 vespa query 'yql=select text from doc where {targetHits: 3}nearestNeighbor(embedding, q)' \
   'input.query(q)=[0.05, 0.05, 0.05, 0.05, 0.85, 0.85, 0.05, 0.05]' ranking=closest hits=3 searchChain=vespa
 
@@ -84,7 +91,7 @@ Add the jar to your application's `components/` directory, then wire it as in `a
 - `EncryptVectorsDocumentProcessor` in a document processing chain that inherits `indexing`, referenced from the content cluster.
 - `EncryptQueryVectorSearcher` in the search chain your queries use.
 
-The vector field must be a `tensor<float>(x[N])`, and the schema needs a `raw` field for the metadata returned by encryption, which is required to decrypt the vector. Feed whole documents: the document processor rejects partial updates of the vector field. Vespa logs a rejected update at warning level including its field values, so a rejected update's plaintext vector ends up in the Vespa log.
+The vector field must be a `tensor<float>(x[N])`, and the schema needs a `raw` field for the metadata returned by encryption, which is required to decrypt the vector.
 
 The secret is read from a file holding at least 32 bytes, base64 encoded. The demo generates one and mounts it at `/run/secrets/cloaked-ai-secret`; in production, provision it the way you provision other secrets on Vespa nodes. Every container node that feeds or queries needs the same secret, tenant id and approximation factor.
 
