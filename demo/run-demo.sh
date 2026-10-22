@@ -2,15 +2,16 @@
 # Starts Vespa from $IMAGE, deploys ./app with the Cloaked AI plugin, feeds demo/docs.jsonl and queries it.
 set -o errexit -o nounset -o pipefail
 
-: "${IMAGE:?}"
+ROOT=${BUILD_WORKSPACE_DIRECTORY:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
+# shellcheck source=scripts/env.sh
+source "$ROOT/scripts/env.sh"
 NAME=${NAME:-vespa-cloaked-ai}
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 WORK=$ROOT/out/demo
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 vespa() { docker exec "$NAME" vespa "$@"; }
 
-test -f "$ROOT/app/components/cloaked-ai-vespa-plugin-deploy.jar" || { echo "Run 'make plugin' first" >&2; exit 1; }
+test -f "$ROOT/app/components/cloaked-ai-vespa-plugin-deploy.jar" || { echo "Run 'bazel run //plugin' first" >&2; exit 1; }
 
 step "Generating a Cloaked AI secret"
 mkdir -p "$WORK"

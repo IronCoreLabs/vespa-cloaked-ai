@@ -15,11 +15,12 @@
         # Builds run in Docker; this shell is for editing and building the plugin locally.
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            gnumake
+            bazel_8
             git
             openjdk25
             (maven.override { jdk_headless = openjdk25; })
             shellcheck
+            vespa-cli
           ];
           JAVA_HOME = if pkgs.stdenv.hostPlatform.isDarwin then "${pkgs.openjdk25}" else "${pkgs.openjdk25}/lib/openjdk";
         };

@@ -6,43 +6,35 @@ Documents are fed with plaintext vectors and stored encrypted. Queries carry a p
 
 ## Why a custom Vespa image
 
-`ironcore-alloy-java` calls its native library through the Java FFM API. Its classes need JDK 22 or newer, and the bundled `libironcore_alloy.so` needs glibc 2.34 or newer. The published Vespa images run AlmaLinux 8 (JDK 17, glibc 2.28), and the AlmaLinux 9 build uses JDK 21 with `--enable-preview` class files that will not run on a newer JDK.
+`ironcore-alloy-java` calls its native library through the Java FFM API. Its classes need JDK 22 or newer, and the bundled `libironcore_alloy.so` needs glibc 2.34 or newer. The default Vespa image runs AlmaLinux 8 (JDK 17, glibc 2.28).
 
-Vespa's RPM spec already supports AlmaLinux 10, where it builds with JDK 25 and glibc 2.39, and Vespa publishes the el10 build dependencies. Vespa does not publish el10 images, so this repo builds one.
+This repo builds an image from the same published Vespa RPMs, using the AlmaLinux 9 packages (glibc 2.34) and running them on JDK 25 instead of the JDK 21 they are packaged with. Those jars target JDK 21 and contain no preview-feature class files, so they run on 25.
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `build/build-rpms.sh` | Builds Vespa RPMs from a release tag inside `almalinux:10` |
-| `build/Dockerfile` | Vespa runtime image on AlmaLinux 10, adapted from [vespa-engine/docker-image](https://github.com/vespa-engine/docker-image) |
+| `build/Dockerfile` | Vespa on AlmaLinux 9 with JDK 25, adapted from [vespa-engine/docker-image](https://github.com/vespa-engine/docker-image) |
 | `plugin/` | The container plugin: `CloakedAi` component, `EncryptVectorsDocumentProcessor`, `EncryptQueryVectorSearcher` |
 | `app/` | Vespa application package using the plugin |
 | `demo/run-demo.sh` | Starts the image, deploys `app/`, feeds and queries |
 
 ## Requirements
 
-Docker 23 or newer (`make image` uses a named build context), roughly 20 GB free in Docker's disk, and a checkout of [vespa-engine/vespa](https://github.com/vespa-engine/vespa) next to this repository:
-
-```sh
-git clone https://github.com/vespa-engine/vespa ../vespa
-git -C ../vespa checkout v8.763.13
-```
-
-Set `VESPA_SRC` to use a checkout elsewhere. The build uses the release tag checked out there; set `VESPA_REF` to build another tag without changing the checkout. Building a ref that is not a `vX.Y.Z` tag requires `VESPA_VERSION`, and that version must be at least the `vespa.version` the plugin is compiled against.
+Docker and Bazel 8 (`.bazelversion` pins it for bazelisk; `nix develop` provides it, along with the Vespa CLI).
 
 ## Running
 
+The Bazel targets are runners for Docker and Maven, so they are used with `bazel run`:
+
 ```sh
-make rpms     # Vespa RPMs into out/rpms; a full C++ and Java build, about 40 minutes on 6 arm64 cores
-make image    # vespa-el10:<version>
-make plugin   # app/components/cloaked-ai-vespa-plugin-deploy.jar
-make demo
+bazel run //build:image   # vespa-jdk25:<version>
+bazel run //plugin        # app/components/cloaked-ai-vespa-plugin-deploy.jar
+bazel run //demo
+bazel run //:clean        # removes out/, plugin/target/ and app/components/
 ```
 
-`make rpms` caches Maven and Go downloads in the Docker volumes `vespa-el10-m2` and `vespa-el10-go`; `make plugin` uses `vespa-cloaked-ai-plugin-m2`.
-
-The RPM build skips debug info and `%check`, and works around a spec issue in v8.763.13 that left el10 RPMs requiring abseil sonames no package provides; see the comments in `build/build-rpms.sh`.
+`VESPA_VERSION` (default `8.763.13`) selects the Vespa RPMs and the Vespa API the plugin is compiled against; `ALLOY_VERSION` (default `0.16.1`) selects `ironcore-alloy-java`. Pass them as environment variables, e.g. `VESPA_VERSION=8.763.13 bazel run //build:image`. The plugin build caches Maven downloads in the Docker volume `vespa-cloaked-ai-plugin-m2`.
 
 The demo feeds six 8-dimensional vectors in three topics, then:
 
@@ -52,6 +44,37 @@ The demo feeds six 8-dimensional vectors in three topics, then:
 4. Shows that a partial update of `embedding` is rejected.
 
 The container keeps running afterwards on ports 8080 and 19071.
+
+## Trying it with the Vespa CLI
+
+`nix develop` provides the `vespa` CLI (or install it from [the Vespa docs](https://docs.vespa.ai/en/vespa-cli.html)). Its default target is the local container the demo leaves running.
+
+```sh
+vespa status
+
+# Feed a document with a plaintext vector; it is stored encrypted.
+vespa document put id:demo:doc::violin \
+  --data '{"fields": {"text": "violin", "embedding": {"values": [0.0, 0.1, 0.0, 0.0, 0.85, 0.85, 0.0, 0.1]}}}'
+vespa document get id:demo:doc::violin
+
+# Nearest neighbors of a plaintext query vector near the music topic.
+vespa query 'yql=select text from doc where {targetHits: 3}nearestNeighbor(embedding, q)' \
+  'input.query(q)=[0.05, 0.05, 0.05, 0.05, 0.85, 0.85, 0.05, 0.05]' ranking=closest hits=3
+
+# The same query without EncryptQueryVectorSearcher, matching a plaintext vector against encrypted ones.
+vespa query 'yql=select text from doc where {targetHits: 3}nearestNeighbor(embedding, q)' \
+  'input.query(q)=[0.05, 0.05, 0.05, 0.05, 0.85, 0.85, 0.05, 0.05]' ranking=closest hits=3 searchChain=vespa
+
+# Rejected: partial updates of the encrypted field.
+vespa document update id:demo:doc::violin --data '{"fields": {"embedding": {"assign": {"values": [1, 1, 1, 1, 1, 1, 1, 1]}}}}'
+
+# Allowed: updates to other fields.
+vespa document update id:demo:doc::violin --data '{"fields": {"text": {"assign": "fiddle"}}}'
+
+vespa document remove id:demo:doc::violin
+```
+
+Query results include `matchfeatures` with the distance computed between the encrypted vectors.
 
 ## Using the plugin in your application
 

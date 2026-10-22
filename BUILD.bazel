@@ -1,0 +1,8 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+
+# The targets in this repo drive Docker or Maven against the source tree, so use `bazel run`, not `bazel build`.
+
+sh_binary(
+    name = "clean",
+    srcs = ["scripts/clean.sh"],
+)

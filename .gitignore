@@ -1,6 +1,7 @@
 /out/
 /plugin/target/
 /app/components/
+/bazel-*
 /.direnv/
 /result
 .DS_Store
