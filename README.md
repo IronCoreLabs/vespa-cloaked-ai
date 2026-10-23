@@ -36,7 +36,8 @@ The Bazel targets are runners for Docker and Maven, so they are used with `bazel
 bazel run //build:image   # vespa-jdk25:<version>
 bazel run //plugin        # app/components/cloaked-ai-vespa-plugin-deploy.jar
 bazel run //demo
-bazel run //:clean        # removes out/, plugin/target/ and app/components/
+bazel run //:stop         # removes the demo container, out/, plugin/target/ and app/components/
+bazel run //:clean        # stop, then removes the images, the Maven cache volume and Bazel's output
 ```
 
 `VESPA_VERSION` (default `8.763.13`) selects the Vespa RPMs and the Vespa API the plugin is compiled against; `ALLOY_VERSION` (default `0.16.1`) selects `ironcore-alloy-java`. Pass them as environment variables, e.g. `VESPA_VERSION=8.763.13 bazel run //build:image`. The plugin build caches Maven downloads in the Docker volume `vespa-cloaked-ai-plugin-m2`.
@@ -48,7 +49,7 @@ The demo feeds six 8-dimensional vectors in three topics, then:
 3. Sends the same query through the built-in `vespa` chain, which skips the searcher, to show that a plaintext query does not match against the encrypted index.
 4. Shows that a partial update of `embedding` is rejected.
 
-The container keeps running afterwards on ports 8080 and 19071.
+The container keeps running afterwards on ports 8080 and 19071, until `bazel run //:stop` removes it.
 
 ## Trying it with the Vespa CLI
 

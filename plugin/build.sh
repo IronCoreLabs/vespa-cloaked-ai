@@ -8,8 +8,8 @@ source "$ROOT/scripts/env.sh"
 
 docker run --rm \
   -v "$ROOT/plugin:/plugin" -w /plugin \
-  -v vespa-cloaked-ai-plugin-m2:/root/.m2 \
-  docker.io/maven:3-eclipse-temurin-25 \
+  -v "$M2_VOLUME:/root/.m2" \
+  "$MAVEN_IMAGE" \
   mvn --batch-mode -Dvespa.version="$VESPA_VERSION" -Dalloy.version="$ALLOY_VERSION" package
 mkdir -p "$ROOT/app/components"
 cp "$ROOT/plugin/target/cloaked-ai-vespa-plugin-deploy.jar" "$ROOT/app/components/"

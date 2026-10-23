@@ -6,3 +6,8 @@ sh_binary(
     name = "clean",
     srcs = ["scripts/clean.sh"],
 )
+
+sh_binary(
+    name = "stop",
+    srcs = ["scripts/stop.sh"],
+)

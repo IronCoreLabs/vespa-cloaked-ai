@@ -5,10 +5,10 @@ set -o errexit -o nounset -o pipefail
 ROOT=${BUILD_WORKSPACE_DIRECTORY:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 # shellcheck source=scripts/env.sh
 source "$ROOT/scripts/env.sh"
-NAME=${NAME:-vespa-cloaked-ai}
 WORK=$ROOT/out/demo
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+note() { printf '\n\033[2m%s\033[0m\n' "$*"; }
 vespa() { docker exec "$NAME" vespa "$@"; }
 
 test -f "$ROOT/app/components/cloaked-ai-vespa-plugin-deploy.jar" || { echo "Run 'bazel run //plugin' first" >&2; exit 1; }
@@ -45,9 +45,11 @@ yql='select text from doc where {targetHits: 6}nearestNeighbor(embedding, q)'
 step "Plaintext query near 'fruit', encrypted by EncryptQueryVectorSearcher"
 encrypted_result=$(vespa query "yql=$yql" "input.query(q)=$near_fruit" ranking=closest hits=6)
 echo "$encrypted_result"
+note "The searcher encrypted the query vector with the same key as the documents, so distances between encrypted vectors track the plaintext ones: apple and banana are much closer than the other four."
 
 step "Same query sent without the searcher (searchChain=vespa): plaintext query against encrypted vectors"
 vespa query "yql=$yql" "input.query(q)=$near_fruit" ranking=closest hits=6 searchChain=vespa
+note "This query vector stayed plaintext and was compared against encrypted documents. All six distances are similar and their order is arbitrary: apple or banana may still be listed, but no closer than the rest."
 
 step "Updating the encrypted field is rejected"
 if update_output=$(vespa document update /demo/update-embedding.json 2>&1); then
@@ -67,4 +69,4 @@ if [[ $top_two != '"text": "apple" "text": "banana" ' ]]; then
   exit 1
 fi
 echo "OK: top two hits are apple and banana"
-echo "Vespa is still running as container '$NAME'; remove it with: docker rm -f $NAME"
+echo "Vespa is still running as container '$NAME'; remove it with: bazel run //:stop"
